@@ -41,6 +41,7 @@ func (apir apiRouter) Use() apiRouter {
 }
 
 func (apir apiRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer handlePanic()
 	handler, ok := apir[r.Method]
 	if !ok {
 		apir.ReturnMethodNotAllowed(w, r)
@@ -60,3 +61,8 @@ func (apir apiRouter) ReturnMethodNotAllowed(w http.ResponseWriter, _ *http.Requ
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
+func handlePanic() {
+	if err := recover(); err != nil {
+		fmt.Println(err)
+	}
+}
