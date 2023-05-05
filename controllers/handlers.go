@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/lalathealter/kairastat/postgre"
 )
@@ -9,27 +11,56 @@ import (
 func GetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello GEt"))
 }
+// 1 метод:
+// Принимать название и статус пользоватля (авторизован или нет)
+// Добавитьк этому вспомогательную информацию 
+// Сохранить событие 
 
 
 func PostHandler(w http.ResponseWriter, r *http.Request) {
-	queries := []string{
-		"event_name",
+
+	urlvals := r.URL.Query()
+	eventName := urlvals.Get("event")
+	if eventName == "" {
+		log.Panicln("event name wasn't provided;")
 	}
-	_ = parseUrlQuery(r, queries)
+	isAuthorized := urlvals.Has("authorized")
 
-	_ = postgre.GetDB()
-	// dbr, err := db.Query(postgre.SelectEventQuery, vals[0])
-	// if err != nil {
-	// 	log.Panicln(err)
-	// }
+	db := postgre.GetWrapper()
 
-	w.Write([]byte("HEELO post"))
+
+	clientIP := getClientIP(r)
+	userID := db.GetUserFor(clientIP)
+
+	db.SetUserAuthorized(userID, isAuthorized)
+
+	db.SaveEvent(eventName, userID)
+	
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func parseUrlQuery(r *http.Request, loadArr []string) []string {
-	urlvals := r.URL.Query()
-	for i, key := range loadArr {
-		loadArr[i] = urlvals.Get(key)
+func getClientIP(r *http.Request) string {
+	usedIPs := r.Header.Get("X-Forwarded-For")
+	originIP := strings.Split(usedIPs, ", ")[0]
+	if originIP == "" {
+		originIP = trimPortAndBrackets(r.RemoteAddr)
 	}
-	return loadArr
+	return originIP
+}
+
+func trimPortAndBrackets(ip string ) string {
+	fi := findNextInd('[', ip, 0)
+	li := findNextInd(']', ip, fi)
+	trimmed := ip[fi+1:li]
+	return trimmed
+}
+
+func findNextInd(char byte, str string, i int) int {
+	for i < len(str) {
+		if str[i] == char {
+			return i
+		}
+		i++
+	}
+	return i
 }
