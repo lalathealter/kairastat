@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/lalathealter/kairastat/controllers"
 )
 
 const (
@@ -33,8 +35,8 @@ func documentationHandler(w http.ResponseWriter, r *http.Request) {
 
 type apiRouter map[string]http.HandlerFunc
 func (apir apiRouter) Use() apiRouter {
-	apir["GET"] = getHandler
-	apir["POST"] = postHandler
+	apir["GET"] = controllers.GetHandler
+	apir["POST"] = controllers.PostHandler
 	return apir
 }
 
@@ -58,10 +60,3 @@ func (apir apiRouter) ReturnMethodNotAllowed(w http.ResponseWriter, _ *http.Requ
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func getHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello GEt"))
-}
-
-func postHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("HEELO post"))
-}
