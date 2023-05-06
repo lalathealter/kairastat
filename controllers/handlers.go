@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -10,13 +11,28 @@ import (
 )
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello GEt"))
-}
-// 1 метод:
-// Принимать название и статус пользоватля (авторизован или нет)
-// Добавитьк этому вспомогательную информацию 
-// Сохранить событие 
+	// urlvals := r.URL.Query()
 
+	db := postgre.GetWrapper()
+	var dbresArr any
+
+	switch {
+		// case urlvals.Has("event"):
+		// 	dbresArr = db.GetEventsByName()
+		// case urlvals.Has("user-ip"):
+		// 	dbresArr = db.GetEventsByUserIP()
+		// case urlvals.Has("by-authorized"):
+		// 	dbresArr = db.GetEventsByAuthorized()
+		default:
+			dbresArr = db.GetEventsAll()
+	}
+
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(dbresArr); err != nil {
+		log.Panicln(err)
+	}
+}
 
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 
