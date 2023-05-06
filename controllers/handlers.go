@@ -11,7 +11,7 @@ import (
 )
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
-	// urlvals := r.URL.Query()
+	urlvals := r.URL.Query()
 
 	db := postgre.GetWrapper()
 	var dbresArr any
@@ -21,8 +21,10 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		// 	dbresArr = db.GetEventsByName()
 		// case urlvals.Has("user-ip"):
 		// 	dbresArr = db.GetEventsByUserIP()
-		// case urlvals.Has("by-authorized"):
-		// 	dbresArr = db.GetEventsByAuthorized()
+		case urlvals.Has("is-authorized"):
+			passedArg := urlvals.Get("is-authorized")
+			isAuth := parseBoolString(passedArg)
+			dbresArr = db.GetEventsByAuthorized(isAuth)
 		default:
 			dbresArr = db.GetEventsAll()
 	}
@@ -33,6 +35,21 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		log.Panicln(err)
 	}
 }
+
+var parseBoolString = func() func(string)bool {
+	trueDefinitions := map[string]bool{
+		"true": true,
+		"t": true,
+		"1": true,
+		"yes": true,
+		"y": true,
+	}
+	return func(input string) bool {
+		linput := strings.ToLower(input)
+		_, defined := trueDefinitions[linput]
+		return defined
+	}
+}()
 
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 

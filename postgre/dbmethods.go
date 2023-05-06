@@ -40,68 +40,47 @@ func (wr wrapper) SaveEvent(eventName string, userID int) {
 	}
 }
 
-func (wr wrapper) GetEventsAll() []*EventObjectReponse {
+func (wr wrapper) GetEventsAll() []*EventObject {
 	dbrows, err :=  wr.db.Query(SelectAllEvents)
 	if err != nil {
 		log.Panicln(err)
 	}
-	resultsArr := parseSQLRows(dbrows, EventObjectReponse{})
+	resultsArr := parseSQLRows(dbrows, EventObject{})
 	return resultsArr 
 }
 
-func parseSQLRows[T any](rows *sql.Rows, outputFormat T) ([]*T) {
-	defer rows.Close()
-
-	results := make([]*T, 0)
-	i := 0
-	for rows.Next() {
-		results = append(results, new(T))
-		fieldMap := ExtractFieldPointersIntoNamedMap(results[i])
-		sqlColumns, err := rows.Columns()
-		if err != nil {
-			log.Panicln(err)
-		}
-
-		orderedPointersArr := make([]any, len(fieldMap))
-		for i, column := range sqlColumns {
-			orderedPointersArr[i] = fieldMap[column]
-		}
-		err = rows.Scan(orderedPointersArr...)
-		if err != nil {
-			log.Panicln(err)
-		}
-		i++
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Panicln(err)
-	}
-	return results
-}
-
-func ExtractFieldPointersIntoNamedMap[T any](in *T) (map[string]any) {
-	fieldMap := make(map[string]any)
-	iter := reflect.ValueOf(in).Elem()
-	for i := 0; i < iter.NumField(); i++ {
-		currPtr := iter.Field(i).Addr().Interface()
-
-		columnName := iter.Type().Field(i).Tag.Get("field") // sql field tag
-		if columnName == "" {
-			log.Panicln(fmt.Errorf("Struct type %T doesn't provide the necessary field tags for successful sql parsing", *in))
-		}
-
-		fieldMap[columnName] = currPtr
-	}
-	return fieldMap
-}
-
-type EventObjectReponse struct {
+type EventObject struct {
 	EventName string `field:"event_name"`
 	EventCount string `field:"endorsements_count"`
 	OldestRecord string `field:"created_at"`
 }
 
+func (wr wrapper) GetEventsByAuthorized(isAuthorized bool) []*EventObject {
+	dbrows, err := wr.db.Query(SelectEventsByUserAuthorization, isAuthorized)
+	if err != nil {
+		log.Panicln(err)
+	}
+	return parseSQLRows(dbrows, EventObject{})
+}
+
+
 const (
+	SelectEventsByUserAuthorization = `
+		SELECT 
+			event_name, 
+			sum(endorsements_count) AS endorsements_count,
+			(SELECT min(created_at) AS created_at FROM kairastat.events WHERE event_name=evs.event_name)
+		FROM 
+			kairastat.events evs
+		WHERE (
+			SELECT authorized 
+			FROM kairastat.users 
+			WHERE user_id = evs.author_id
+		) = $1
+		GROUP BY 
+			event_name
+	;`
+
 	SelectAllEvents = `
 		SELECT 
 			event_name, 
@@ -161,3 +140,51 @@ const (
 			SET endorsements_count = evs.endorsements_count + 1
 	;`
 )
+
+func parseSQLRows[T any](rows *sql.Rows, outputFormat T) ([]*T) {
+	defer rows.Close()
+
+	results := make([]*T, 0)
+	i := 0
+	for rows.Next() {
+		results = append(results, new(T))
+		fieldMap := ExtractFieldPointersIntoNamedMap(results[i])
+		sqlColumns, err := rows.Columns()
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		orderedPointersArr := make([]any, len(fieldMap))
+		for i, column := range sqlColumns {
+			orderedPointersArr[i] = fieldMap[column]
+		}
+		err = rows.Scan(orderedPointersArr...)
+		if err != nil {
+			log.Panicln(err)
+		}
+		i++
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Panicln(err)
+	}
+	return results
+}
+
+func ExtractFieldPointersIntoNamedMap[T any](in *T) (map[string]any) {
+	fieldMap := make(map[string]any)
+	iter := reflect.ValueOf(in).Elem()
+	for i := 0; i < iter.NumField(); i++ {
+		currPtr := iter.Field(i).Addr().Interface()
+
+		columnName := iter.Type().Field(i).Tag.Get("field") // sql field tag
+		if columnName == "" {
+			log.Panicln(fmt.Errorf("Struct type %T doesn't provide the necessary field tags for successful sql parsing", *in))
+		}
+
+		fieldMap[columnName] = currPtr
+	}
+	return fieldMap
+}
+
+
