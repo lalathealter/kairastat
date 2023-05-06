@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -23,6 +24,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	eventName := urlvals.Get("event")
 	if eventName == "" {
 		log.Panicln("event name wasn't provided;")
+	} else if len(eventName) > 128  {
+		log.Panicln("given event name is too long;")
 	}
 	isAuthorized := urlvals.Has("authorized")
 
@@ -43,24 +46,8 @@ func getClientIP(r *http.Request) string {
 	usedIPs := r.Header.Get("X-Forwarded-For")
 	originIP := strings.Split(usedIPs, ", ")[0]
 	if originIP == "" {
-		originIP = trimPortAndBrackets(r.RemoteAddr)
+		originIP, _, _ = net.SplitHostPort(r.RemoteAddr)
 	}
 	return originIP
 }
 
-func trimPortAndBrackets(ip string ) string {
-	fi := findNextInd('[', ip, 0)
-	li := findNextInd(']', ip, fi)
-	trimmed := ip[fi+1:li]
-	return trimmed
-}
-
-func findNextInd(char byte, str string, i int) int {
-	for i < len(str) {
-		if str[i] == char {
-			return i
-		}
-		i++
-	}
-	return i
-}

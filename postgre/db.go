@@ -26,7 +26,7 @@ func GetWrapper() wrapper {
 	return wrapper{currentDB}
 }
 
-func getEnv(key string) string {
+func GetEnv(key string) string {
 	val, found := os.LookupEnv(key)
 	if !found {
 		log.Fatalln("An env var is missing: ", key)
@@ -37,7 +37,7 @@ func getEnv(key string) string {
 func getpsqlconn() string {
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		getEnv("dbhost"), getEnv("dbport"), getEnv("dbuser"), getEnv("dbpassword"), getEnv("dbname"),
+		GetEnv("dbhost"), GetEnv("dbport"), GetEnv("dbuser"), GetEnv("dbpassword"), GetEnv("dbname"),
 	)
 }
 func connect() *sql.DB {
@@ -74,13 +74,15 @@ func presetTables(db *sql.DB) {
 			CREATE TABLE IF NOT EXISTS kairastat.events (
 				event_id SERIAL PRIMARY KEY NOT NULL,
 				event_name VARCHAR(128) NOT NULL,
-				endorsements_count INT NOT NULL DEFAULT 0,
+				endorsements_count INT NOT NULL DEFAULT 1,
 				created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), 
 				author_id SERIAL NOT NULL,
+				CONSTRAINT uniqueness 
+					UNIQUE (event_name, author_id),
 				CONSTRAINT author_id
 					FOREIGN KEY(author_id)
 						REFERENCES kairastat.users(user_id)
-						ON DELETE NO ACTION
+						ON DELETE CASCADE
 			)
 		;`,
 	}
@@ -88,7 +90,7 @@ func presetTables(db *sql.DB) {
 	for _, comm := range initcommands {
 		_, err := db.Exec(comm)
 		if err != nil {
-			log.Panicln(err)
+			log.Panicln(err.Error())
 		}
 	}
 }

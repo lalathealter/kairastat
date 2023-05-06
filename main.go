@@ -7,18 +7,19 @@ import (
 	"strings"
 
 	"github.com/lalathealter/kairastat/controllers"
+	"github.com/lalathealter/kairastat/postgre"
 )
 
-const (
-	PORT = ":8080"
-)
 
 func main() {
-	
-	fmt.Println("Running the server on port:", PORT)
+	HOST := postgre.GetEnv("HOST")
+	PORT := postgre.GetEnv("PORT")
+	ROOT := HOST + ":" + PORT
+
+	fmt.Println("Running the server on port", PORT)
 	http.HandleFunc("/", baseHandler)
 	http.Handle("/api", apiRouter{}.Use())
-	log.Fatal(http.ListenAndServe(PORT, nil))
+	log.Fatal(http.ListenAndServe(ROOT, nil))
 }
 
 func baseHandler(w http.ResponseWriter, r *http.Request) {
