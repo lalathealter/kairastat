@@ -71,45 +71,42 @@ func (wr wrapper) GetEventsByName(eventName string) []*EventObject {
 	return parseSQLRows(dbrows, EventObject{})
 }
 
+func applyFilter(template string) func(string)string {
+	return func(filter string) string {
+		return fmt.Sprintf(template, filter)
+	}
+}
+
+var (
+	SelectEventsBy = applyFilter(TemplateSelectEventsBy)
+	SelectEventsByName = SelectEventsBy(FilterEventByName)
+	SelectEventsByUserAuthorization = SelectEventsBy(FilterEventBuAthorization)
+	SelectAllEvents = SelectEventsBy("")
+)
+
 const (
-	SelectEventsByName =  `
+	TemplateSelectEventsBy = `
 		SELECT 
 			event_name, 
 			sum(endorsements_count) AS endorsements_count,
 			(SELECT min(created_at) AS created_at FROM kairastat.events WHERE event_name=evs.event_name)
 		FROM 
 			kairastat.events evs
-		WHERE event_name = $1
+		%s
 		GROUP BY 
 			event_name
-	;`
-
-	SelectEventsByUserAuthorization = `
-		SELECT 
-			event_name, 
-			sum(endorsements_count) AS endorsements_count,
-			(SELECT min(created_at) AS created_at FROM kairastat.events WHERE event_name=evs.event_name)
-		FROM 
-			kairastat.events evs
+	;
+	`
+	FilterEventByName = `
+		WHERE event_name = $1
+	`
+	FilterEventBuAthorization = `
 		WHERE (
 			SELECT authorized 
 			FROM kairastat.users 
 			WHERE user_id = evs.author_id
 		) = $1
-		GROUP BY 
-			event_name
-	;`
-
-	SelectAllEvents = `
-		SELECT 
-			event_name, 
-			sum(endorsements_count) AS endorsements_count,
-			(SELECT min(created_at) AS created_at FROM kairastat.events WHERE event_name=evs.event_name)
-		FROM 
-			kairastat.events evs
-		GROUP BY 
-			event_name
-	;`
+	`
 
 	SelectUserIDQuery = `
 		SELECT user_id 
