@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -45,7 +44,6 @@ func parseIPAddress(input string) string {
 	if ipAddr == nil {
 		log.Panicln("given user-ip isn't a valid IP address;")
 	}
-	fmt.Println(ipAddr.String())
 	return ipAddr.String() 
 }
 
