@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -20,8 +21,10 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		case urlvals.Has("event"):
 			passedEventName := urlvals.Get("event")
 			dbresArr = db.GetEventsByName(passedEventName)
-		// case urlvals.Has("user-ip"):
-		// 	dbresArr = db.GetEventsByUserIP()
+		case urlvals.Has("user-ip"):
+			passedIP := urlvals.Get("user-ip")
+			ip := parseIPAddress(passedIP)
+			dbresArr = db.GetEventsByUserIP(ip)
 		case urlvals.Has("is-authorized"):
 			passedArg := urlvals.Get("is-authorized")
 			isAuth := parseBoolString(passedArg)
@@ -35,6 +38,15 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(dbresArr); err != nil {
 		log.Panicln(err)
 	}
+}
+
+func parseIPAddress(input string) string {
+	ipAddr := net.ParseIP(input)
+	if ipAddr == nil {
+		log.Panicln("given user-ip isn't a valid IP address;")
+	}
+	fmt.Println(ipAddr.String())
+	return ipAddr.String() 
 }
 
 var parseBoolString = func() func(string)bool {

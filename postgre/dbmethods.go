@@ -71,6 +71,14 @@ func (wr wrapper) GetEventsByName(eventName string) []*EventObject {
 	return parseSQLRows(dbrows, EventObject{})
 }
 
+func (wr wrapper) GetEventsByUserIP(ip string) []*EventObject {
+	dbrows, err := wr.db.Query(SelectEventsByIP, ip)
+	if err != nil {
+		log.Panicln(err)
+	}
+	return parseSQLRows(dbrows, EventObject{})
+}
+
 func applyFilter(template string) func(string)string {
 	return func(filter string) string {
 		return fmt.Sprintf(template, filter)
@@ -81,6 +89,7 @@ var (
 	SelectEventsBy = applyFilter(TemplateSelectEventsBy)
 	SelectEventsByName = SelectEventsBy(FilterEventByName)
 	SelectEventsByUserAuthorization = SelectEventsBy(FilterEventBuAthorization)
+	SelectEventsByIP = SelectEventsBy(FilterEventByAuthorIP)
 	SelectAllEvents = SelectEventsBy("")
 )
 
@@ -95,7 +104,14 @@ const (
 		%s
 		GROUP BY 
 			event_name
-	;
+	;`
+	
+	FilterEventByAuthorIP = `
+		WHERE (
+			SELECT ip_address
+			FROM kairastat.users
+			WHERE user_id = evs.author_id
+		) = $1
 	`
 	FilterEventByName = `
 		WHERE event_name = $1
