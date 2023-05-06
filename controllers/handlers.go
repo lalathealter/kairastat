@@ -17,8 +17,9 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	var dbresArr any
 
 	switch {
-		// case urlvals.Has("event"):
-		// 	dbresArr = db.GetEventsByName()
+		case urlvals.Has("event"):
+			passedEventName := urlvals.Get("event")
+			dbresArr = db.GetEventsByName(passedEventName)
 		// case urlvals.Has("user-ip"):
 		// 	dbresArr = db.GetEventsByUserIP()
 		case urlvals.Has("is-authorized"):

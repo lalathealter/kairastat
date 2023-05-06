@@ -63,8 +63,27 @@ func (wr wrapper) GetEventsByAuthorized(isAuthorized bool) []*EventObject {
 	return parseSQLRows(dbrows, EventObject{})
 }
 
+func (wr wrapper) GetEventsByName(eventName string) []*EventObject {
+	dbrows, err := wr.db.Query(SelectEventsByName, eventName)
+	if err != nil {
+		log.Panicln(err)
+	}
+	return parseSQLRows(dbrows, EventObject{})
+}
 
 const (
+	SelectEventsByName =  `
+		SELECT 
+			event_name, 
+			sum(endorsements_count) AS endorsements_count,
+			(SELECT min(created_at) AS created_at FROM kairastat.events WHERE event_name=evs.event_name)
+		FROM 
+			kairastat.events evs
+		WHERE event_name = $1
+		GROUP BY 
+			event_name
+	;`
+
 	SelectEventsByUserAuthorization = `
 		SELECT 
 			event_name, 
