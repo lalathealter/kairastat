@@ -2,16 +2,15 @@ package postgre
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
-	"reflect"
 )
 
-type wrapper struct {
+type Wrapper struct {
 	db *sql.DB
 }
 
-func (wr wrapper) GetUserFor(clientIP string) int {
+
+func (wr Wrapper) GetUserFor(clientIP string) int {
 	var userID int
 	dbrow := wr.db.QueryRow(SelectUserIDQuery, clientIP)
 	dbrow.Scan(&userID)
@@ -26,28 +25,20 @@ func (wr wrapper) GetUserFor(clientIP string) int {
 	return userID
 }
 
-func (wr wrapper) SetUserAuthorized(userID int, isAuthorized bool) {
+func (wr Wrapper) SetUserAuthorized(userID int, isAuthorized bool) {
 	_, err := wr.db.Exec(UpdateUserAuthorizedQuery, isAuthorized, userID)
 	if err != nil {
 		log.Panicln(err)
 	} 
 }
 
-func (wr wrapper) SaveEvent(eventName string, userID int) {
+func (wr Wrapper) SaveEvent(eventName string, userID int) {
 	_, err := wr.db.Exec(CreateEventQuery, eventName, userID)
 	if err != nil {
 		log.Panicln(err)
 	}
 }
 
-func (wr wrapper) GetEventsAll() []*EventObject {
-	dbrows, err :=  wr.db.Query(SelectAllEvents)
-	if err != nil {
-		log.Panicln(err)
-	}
-	resultsArr := parseSQLRows(dbrows, EventObject{})
-	return resultsArr 
-}
 
 type EventObject struct {
 	EventName string `field:"event_name"`
@@ -55,45 +46,56 @@ type EventObject struct {
 	OldestRecord string `field:"created_at"`
 }
 
-func (wr wrapper) GetEventsByAuthorized(isAuthorized bool) []*EventObject {
-	dbrows, err := wr.db.Query(SelectEventsByUserAuthorization, isAuthorized)
-	if err != nil {
-		log.Panicln(err)
-	}
-	return parseSQLRows(dbrows, EventObject{})
+func (wr Wrapper) ParseEventRows(eventRows *sql.Rows) []*EventObject {
+	return parseSQLRows(eventRows, EventObject{})
 }
 
-func (wr wrapper) GetEventsByName(eventName string) []*EventObject {
-	dbrows, err := wr.db.Query(SelectEventsByName, eventName)
-	if err != nil {
-		log.Panicln(err)
-	}
-	return parseSQLRows(dbrows, EventObject{})
+func (wr Wrapper) GetEventsAll() SubQueryCB  {
+	return GenSubQueryWith(SelectAllEvents)()
 }
 
-func (wr wrapper) GetEventsByUserIP(ip string) []*EventObject {
-	dbrows, err := wr.db.Query(SelectEventsByIP, ip)
-	if err != nil {
-		log.Panicln(err)
-	}
-	return parseSQLRows(dbrows, EventObject{})
+func (wr Wrapper) GetEventsByAuthorized(isAuthorized bool)  SubQueryCB {
+	return GenSubQueryWith(SelectEventsByUserAuthorization)(isAuthorized)
 }
 
-func applyFilter(template string) func(string)string {
-	return func(filter string) string {
-		return fmt.Sprintf(template, filter)
-	}
+func (wr Wrapper) GetEventsByName(eventName string) SubQueryCB {
+	return GenSubQueryWith(SelectEventsByName)(eventName)
 }
+
+func (wr Wrapper) GetEventsByUserIP(ip string) SubQueryCB {
+	return GenSubQueryWith(SelectEventsByIP)(ip)
+}
+
 
 var (
-	SelectEventsBy = applyFilter(TemplateSelectEventsBy)
-	SelectEventsByName = SelectEventsBy(FilterEventByName)
-	SelectEventsByUserAuthorization = SelectEventsBy(FilterEventBuAthorization)
-	SelectEventsByIP = SelectEventsBy(FilterEventByAuthorIP)
+	SelectEventsBy = applyTemplate(TemplateSelectEventsBy)
+	SelectEventsByName = SelectEventsBy(AggregateEventByName)
+	SelectEventsByUserAuthorization = SelectEventsBy(AggregateEventByAthorization)
+	SelectEventsByIP = SelectEventsBy(AggregateEventByAuthorIP)
 	SelectAllEvents = SelectEventsBy("")
 )
+func (wr Wrapper) FilterEventsByName(eventName string) SubQueryCB {
+	return GenSubQueryWith(FilterEventByName)(eventName)
+}
+
+func (wr Wrapper) FilterEventsByTime(time string) SubQueryCB {
+	return GenSubQueryWith(FilterEventByTime)(time)
+}
+
 
 const (
+	FilterEventByName = `
+		SELECT * 
+		FROM (%s) R
+		WHERE R.event_name LIKE CONCAT($1::text, '%%')
+	;`
+	FilterEventByTime = `
+		SELECT * 
+		FROM (%s) R
+		WHERE R.created_at >= $1
+	;`
+
+
 	TemplateSelectEventsBy = `
 		SELECT 
 			event_name, 
@@ -106,17 +108,17 @@ const (
 			event_name
 	;`
 	
-	FilterEventByAuthorIP = `
+	AggregateEventByAuthorIP = `
 		WHERE (
 			SELECT ip_address
 			FROM kairastat.users
 			WHERE user_id = evs.author_id
 		) = $1
 	`
-	FilterEventByName = `
+	AggregateEventByName = `
 		WHERE event_name = $1
 	`
-	FilterEventBuAthorization = `
+	AggregateEventByAthorization = `
 		WHERE (
 			SELECT authorized 
 			FROM kairastat.users 
@@ -172,51 +174,4 @@ const (
 			SET endorsements_count = evs.endorsements_count + 1
 	;`
 )
-
-func parseSQLRows[T any](rows *sql.Rows, outputFormat T) ([]*T) {
-	defer rows.Close()
-
-	results := make([]*T, 0)
-	i := 0
-	for rows.Next() {
-		results = append(results, new(T))
-		fieldMap := ExtractFieldPointersIntoNamedMap(results[i])
-		sqlColumns, err := rows.Columns()
-		if err != nil {
-			log.Panicln(err)
-		}
-
-		orderedPointersArr := make([]any, len(fieldMap))
-		for i, column := range sqlColumns {
-			orderedPointersArr[i] = fieldMap[column]
-		}
-		err = rows.Scan(orderedPointersArr...)
-		if err != nil {
-			log.Panicln(err)
-		}
-		i++
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Panicln(err)
-	}
-	return results
-}
-
-func ExtractFieldPointersIntoNamedMap[T any](in *T) (map[string]any) {
-	fieldMap := make(map[string]any)
-	iter := reflect.ValueOf(in).Elem()
-	for i := 0; i < iter.NumField(); i++ {
-		currPtr := iter.Field(i).Addr().Interface()
-
-		columnName := iter.Type().Field(i).Tag.Get("field") // sql field tag
-		if columnName == "" {
-			log.Panicln(fmt.Errorf("Struct type %T doesn't provide the necessary field tags for successful sql parsing", *in))
-		}
-
-		fieldMap[columnName] = currPtr
-	}
-	return fieldMap
-}
-
 

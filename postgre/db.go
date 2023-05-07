@@ -22,8 +22,8 @@ func init() {
 	presetTables(currentDB)
 }
 
-func GetWrapper() wrapper {
-	return wrapper{currentDB}
+func GetWrapper() Wrapper {
+	return Wrapper{currentDB}
 }
 
 func GetEnv(key string) string {
