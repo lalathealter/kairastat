@@ -31,7 +31,8 @@ func baseHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func documentationHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello world!")
+	w.Header().Set("Content-Type", "text/markdown")
+	http.ServeFile(w, r, "README.md")
 }
 
 type apiRouter map[string]http.HandlerFunc
@@ -42,7 +43,7 @@ func (apir apiRouter) Use() apiRouter {
 }
 
 func (apir apiRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer handlePanic()
+	defer handlePanic(w)
 	handler, ok := apir[r.Method]
 	if !ok {
 		apir.ReturnMethodNotAllowed(w, r)
@@ -62,8 +63,10 @@ func (apir apiRouter) ReturnMethodNotAllowed(w http.ResponseWriter, _ *http.Requ
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func handlePanic() {
-	if err := recover(); err != nil {
-		fmt.Println(err)
+func handlePanic(w http.ResponseWriter) {
+	if rec := recover(); rec != nil {
+		fmt.Println("Recovered in", rec)
+		w.Write([]byte(rec.(error).Error()))
+		w.WriteHeader(http.StatusBadRequest)
 	}
 }
