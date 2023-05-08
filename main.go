@@ -31,7 +31,7 @@ func baseHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func documentationHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/markdown")
+	w.Header().Set("Content-Type", "text/plain")
 	http.ServeFile(w, r, "README.md")
 }
 
@@ -66,7 +66,13 @@ func (apir apiRouter) ReturnMethodNotAllowed(w http.ResponseWriter, _ *http.Requ
 func handlePanic(w http.ResponseWriter) {
 	if rec := recover(); rec != nil {
 		fmt.Println("Recovered in", rec)
-		w.Write([]byte(rec.(error).Error()))
-		w.WriteHeader(http.StatusBadRequest)
+		switch response := rec.(type) {
+		case string:
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(response))
+		case error:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
 	}
 }

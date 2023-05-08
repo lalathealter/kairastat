@@ -68,7 +68,11 @@ func filterEventsFromURLQuery(db postgre.Wrapper, urlvals url.Values, prevQuery 
 func parseIPAddress(input string) string {
 	ipAddr := net.ParseIP(input)
 	if ipAddr == nil {
-		log.Panicln("given user-ip isn't a valid IP address;")
+		log.Panicln("given value isn't a valid IP address;")
+	}
+	ipAddr = ipAddr.To4()
+	if ipAddr == nil {
+		log.Panicln("given IP isn't a valid IPv4 address;")
 	}
 	return ipAddr.String() 
 }
@@ -143,6 +147,6 @@ func getClientIP(r *http.Request) string {
 	if originIP == "" {
 		originIP, _, _ = net.SplitHostPort(r.RemoteAddr)
 	}
-	return originIP
+	return parseIPAddress(originIP)
 }
 
