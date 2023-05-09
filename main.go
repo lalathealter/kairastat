@@ -12,14 +12,14 @@ import (
 
 
 func main() {
-	HOST := postgre.GetEnv("HOST")
+	// HOST := postgre.GetEnv("HOST")
 	PORT := postgre.GetEnv("PORT")
-	ROOT := HOST + ":" + PORT
+	// ROOT := HOST + ":" + PORT
 
 	fmt.Println("Running the server on port", PORT)
 	http.HandleFunc("/", baseHandler)
 	http.Handle("/api", apiRouter{}.Use())
-	log.Fatal(http.ListenAndServe(ROOT, nil))
+	log.Fatal(http.ListenAndServe(":" + PORT, nil))
 }
 
 func baseHandler(w http.ResponseWriter, r *http.Request) {
