@@ -7,13 +7,13 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 var currentDB *sql.DB
 func init() {
-	_ = godotenv.Load(".env")
+	// _ = godotenv.Load(".env")
 	// if err != nil {
 	// 	log.Fatalln(err)
 	// }
