@@ -1,0 +1,5 @@
+.gitignore
+go.vim
+.env
+.todo
+.git/
