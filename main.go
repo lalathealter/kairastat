@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	// "log"
 	"net/http"
 	"strings"
 
@@ -19,7 +19,10 @@ func main() {
 	fmt.Println("Running the server on port", PORT)
 	http.HandleFunc("/", baseHandler)
 	http.Handle("/api", apiRouter{}.Use())
-	log.Fatal(http.ListenAndServe(":" + PORT, nil))
+	go http.ListenAndServe(":" + PORT, nil)
+	select {
+		// sleeping
+	}
 }
 
 func baseHandler(w http.ResponseWriter, r *http.Request) {
