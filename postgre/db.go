@@ -37,7 +37,7 @@ func GetEnv(key string) string {
 func getpsqlconn() string {
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		GetEnv("dbhost"), GetEnv("dbport"), GetEnv("dbuser"), GetEnv("dbpassword"), GetEnv("dbname"),
+		GetEnv("DBHOST"), GetEnv("DBPORT"), GetEnv("DBUSER"), GetEnv("DBPASSWORD"), GetEnv("DBNAME"),
 	)
 }
 func connect() *sql.DB {
