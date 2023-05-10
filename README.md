@@ -5,6 +5,7 @@ Please note that in order to access an API you should use a path of `./api` and 
 ## POST ./api
 
 Creates an event of the given name with the client's associated IP address; If an event with that name for that IP address already exists, increases an event counter; To pass arguments use URL queries like this:
+
 `POST ./api?event={event_name_value}&authorized`
 
 1. the `event` parameter:
@@ -20,11 +21,14 @@ Creates an event of the given name with the client's associated IP address; If a
 ## GET ./api
 
 Retrieves the data about events based on provided filters and aggregators; To provide those, use URL queries like this:
+
 `GET ./api?{filter-option}={filter_argument}&{aggregator-option}={aggregator_argument}`
+
 Please note that filter and aggregator options are exclusive; If you provide several filter (or aggregator) options at once, a service will respond with only one of them (depending on what would be checked first in the corresponding handler function)
+
 If no aggregator is passed, API returns all available events;
 
-Available filters: 
+- Available filters: 
     1. `starts-with`:
         - filters events based on a provided name start
         - utilizes SQL's LIKE statement, so you would get an expression of `{your_argument}%`
@@ -32,7 +36,7 @@ Available filters:
         - filters events based on the time they were originally created
         - accepts only valid RFC3339 time strings like `2006-01-02T15:04:05+07:00` (the plus sign indicates a start of a timezone and can be replaced with a minus)
 
-Available aggregators:
+- Available aggregators:
     1. `event`:
         - aggregates exact name matches
     2. `user-ip`:
