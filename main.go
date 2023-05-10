@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	// "log"
 	"net/http"
 	"strings"
@@ -35,7 +36,11 @@ func baseHandler(w http.ResponseWriter, r *http.Request) {
 
 func documentationHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
-	http.ServeFile(w, r, "README.md")
+	readme := "README.md"
+	if _, err := os.Open(readme); err != nil {
+		readme = "../" + readme
+	}
+	http.ServeFile(w, r, readme)
 }
 
 type apiRouter map[string]http.HandlerFunc
